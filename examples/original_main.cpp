@@ -6,9 +6,6 @@
 #include "sensors/digital_input.h"
 
 #include "DFRobot_ST7687S_Latch.h"
-#include "DFRobot_Display_Clock.h"
-#include <TimeLib.h>
-#include "SPI.h"
 
 
 #include "displays/AnalogGauge.h"
