@@ -36,3 +36,6 @@
 .piolibdeps
 .vscode
 .history
+
+#directories
+docs/
