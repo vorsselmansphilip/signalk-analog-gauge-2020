@@ -6,9 +6,9 @@
 #include "sensors/digital_input.h"
 
 #include "DFRobot_ST7687S_Latch.h"
-#include "DFRobot_Display_Clock.h"
 #include <TimeLib.h>
 #include "SPI.h"
+#include "gauges/DFR0529.h"
 
 
 #include "displays/AnalogGauge.h"
@@ -62,10 +62,11 @@ ReactESP app([] () {
   // Initialize the LCD display
   Display* pDisplay = new Display(pin_cs, pin_rs, pin_wr, pin_lck);
   pDisplay->begin();
-  AnalogGauge *pGauge = new AnalogGauge(pDisplay, minAnalogGaugeVal, maxAnalogGaugeVal, "/gauge/display");
-  pGauge->addValueRange(AnalogGauge::ValueColor(349.817, 360.928, DISPLAY_GREEN));
-  pGauge->addValueRange(AnalogGauge::ValueColor(360.928, 369.261, DISPLAY_YELLOW));
-  pGauge->addValueRange(AnalogGauge::ValueColor(369.261, maxAnalogGaugeVal, DISPLAY_RED));
+
+  DFR0529 *pGauge = new DFR0529(pDisplay, minAnalogGaugeVal, maxAnalogGaugeVal, "/gauge/display");
+  pGauge->addValueRange(DFR0529::ValueColor(349.817, 360.928, DISPLAY_GREEN));
+  pGauge->addValueRange(DFR0529::ValueColor(360.928, 369.261, DISPLAY_YELLOW));
+  pGauge->addValueRange(DFR0529::ValueColor(369.261, maxAnalogGaugeVal, DISPLAY_RED));
 
   AnalogInput* pAnalogInput = new AnalogInput();
   DigitalInputValue* pButton = new DigitalInputValue(button_pin, INPUT, CHANGE);
