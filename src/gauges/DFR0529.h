@@ -11,6 +11,36 @@
 #include <system/configurable.h>
 #include <system/enable.h>
 #include <system/valueproducer.h>
+/*
+* Select the Alarm type LL=Low Low,L = Low,H=High,HH=High High
+*/
+enum alarm_type {
+  LL,
+  L,
+  H,
+  HH
+};
+
+/*
+* The Notification type event or alarm
+*/
+
+enum notification_type {
+  event,
+  alarm
+};
+
+/*
+* The Notification action none,buzzer,delta,buzzer_delta
+*/
+
+enum notification_action {
+  none,
+  buzzer,
+  delta,
+  buzzer_delta
+};
+
 
 
 /**
@@ -39,6 +69,31 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
                friend bool operator<(const ValueColor& lhs, const ValueColor& rhs) { return lhs.minVal < rhs.minVal; }               
         };
 
+        class GaugeEvent {
+            public:
+                float Threshold;
+                alarm_type Alarm_type=HH;
+                uint16_t Event_color = DISPLAY_RED;
+                notification_type Notification_type = alarm;
+                notification_action Notification_action = delta;
+                
+
+                GaugeEvent();
+                /*
+                * float Threshold
+                * AlarmType LL,L,H,HH
+                * EventColor DISPLAYRED
+                * notification_type none,buzzer,delta
+                * 
+                * */
+                //GaugeEvent(float Threshold, uint16_t Event_color);   
+                //GaugeEvent(float Threshold, alarm_type Alarm_type, uint16_t Event_color, notification_type Notification_type);              
+                GaugeEvent(float Threshold, alarm_type Alarm_type,uint16_t Event_color, notification_type Notification_type ,notification_action Notification_action);
+                
+
+        };
+
+
         DFR0529(DFRobot_Display* pDisplay,
                     double minVal = 0.0, double maxVal = 100.0,
                     String config_path = "");
@@ -55,6 +110,13 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
          */
         virtual void set_input(bool newValue, uint8_t inputChannel = 0) override;
 
+        /*
+        * Activates a simulation 
+        */
+
+        virtual void set_simulation(bool SimulationOn = false);
+
+
         void setGaugeIcon(uint8_t* pNewIcon) { pGaugeIcon = pNewIcon; } 
 
         void setValueSuffix(char suffix, int inputChannel = 0);
@@ -69,6 +131,12 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
          * and "red line" values.
          */
         void addValueRange(const ValueColor& newRange);
+
+        /**
+         * GaugeEvent allows for setting gauge colors like "normal operating range"
+         * and "red line" values.
+         */
+        void addGaugeEvent(const GaugeEvent& newEvent);
 
         /**
          * Returns the color associated with the specified value. If no specific color
@@ -94,6 +162,49 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
         virtual String get_config_schema() override;
         
     private:
+        // values needed for the calculation
+        // TODO: move precision to here uint8* precision;
+        double lower_limit = 0.0;
+        double upper_limit = 9999.0;
+        String eng_units = "RPM";
+        // values to needed to calculate gauge ring
+        double gauge_range = 180.0;
+        double gauge_start = 160.0;
+        uint16_t inRange_color = DISPLAY_GREEN;
+        uint16_t div_color = DISPLAY_WHITE;
+
+        double LL_Threshold = 1000.0;
+        double L_Threshold = 2000.0;
+        double H_Threshold=6000.0;
+        double HH_Threshold=7000.0;
+        //colors for the limits
+        uint16_t LL_color = DISPLAY_RED;
+        uint16_t L_color = DISPLAY_ORANGE;
+        uint16_t H_color = DISPLAY_ORANGE;
+        uint16_t HH_color = DISPLAY_RED;
+
+        // placeholders for the divisions
+        int LL_div = 0;
+        int L_div = 0;
+        int IR_div = 4;
+        int H_div = 2;
+        int HH_div = 2;
+
+        // don't touch my privates
+
+        double gauge_div = 4;
+        double gauge_needle_last_x,gauge_needle_last_y;
+        int total_div; 
+        double div_angle;
+        double gauge_angle;
+        double gauge_blindspot;
+
+        bool SimulationActivated;
+        float SimulationSinVal;                                                   
+        int Simulation_x = 0;
+
+
+
         double minVal;
         double maxVal;
         double valueRange;
@@ -118,6 +229,7 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
         void drawDisplay();
         void updateGauge();
         void updateWifiStatus();
+        void SimulationActive();
 
         void calcPoint(double pct, uint16_t radius, int16_t& x, int16_t& y);
         void drawHash(double pct, uint16_t startRadius, uint16_t endRadius, uint16_t color);
@@ -126,6 +238,7 @@ class DFR0529 : public NumericConsumer, public BooleanConsumer,
         void drawNeedle(double value, uint16_t color);
 
         std::set<ValueColor> valueColors;
+        std::set<GaugeEvent> gaugeEvents;
 };
 
 #endif

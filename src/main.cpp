@@ -33,6 +33,11 @@ const float R1 = 5100.0; // The resistance, in Ohms, of the R1 resitor in the an
 const float minAnalogGaugeVal = 327.594; // Minimum value to display on analog gauge
 const float maxAnalogGaugeVal = 377.594; // Max value to display on analog gauge
 
+//having fun with sinwaves
+float sinVal;                                                   // delete me: variable which can hold the sine value
+int x = 0;
+double demoValue = 0.0;
+
 #define Display DFRobot_ST7687S_Latch
 // Wiring configuration and setup for TFT display
 #ifdef ARDUINO_ESP8266_NODEMCU
@@ -59,18 +64,32 @@ ReactESP app([] () {
 
   sensesp_app = new SensESPApp();
 
+
+    
+
   // Initialize the LCD display
   Display* pDisplay = new Display(pin_cs, pin_rs, pin_wr, pin_lck);
   pDisplay->begin();
 
   DFR0529 *pGauge = new DFR0529(pDisplay, minAnalogGaugeVal, maxAnalogGaugeVal, "/gauge/display");
+  pGauge->addGaugeEvent(DFR0529::GaugeEvent(1000.00,LL,DISPLAY_RED,alarm,buzzer));
+  pGauge->addGaugeEvent(DFR0529::GaugeEvent(3000.00,L,DISPLAY_ORANGE,event,none));
+  pGauge->addGaugeEvent(DFR0529::GaugeEvent(7000.00,H,DISPLAY_RED,event,none));
+  pGauge->addGaugeEvent(DFR0529::GaugeEvent(8000.00,HH,DISPLAY_RED,alarm,buzzer));
   pGauge->addValueRange(DFR0529::ValueColor(349.817, 360.928, DISPLAY_GREEN));
   pGauge->addValueRange(DFR0529::ValueColor(360.928, 369.261, DISPLAY_YELLOW));
   pGauge->addValueRange(DFR0529::ValueColor(369.261, maxAnalogGaugeVal, DISPLAY_RED));
 
+  pGauge->set_simulation(true);
+
+  
+
   AnalogInput* pAnalogInput = new AnalogInput();
   DigitalInputValue* pButton = new DigitalInputValue(button_pin, INPUT, CHANGE);
   
+  float actual_value = sinVal * 1024; //1024 is the analog value
+ 
+ 
 
   NumericTransform* pTempInKelvin;
   NumericTransform* pVoltage;
@@ -86,6 +105,7 @@ ReactESP app([] () {
                 connectTo(pTempInKelvin = new ChangeFilter(1, 10, 6, "/gauge/output/change")) ->
                 connectTo(new SKOutputNumber(sk_path, "/gauge/output/sk")) ->
                 connectTo(pGauge);
+ 
   pGauge->setValueSuffix('k', 0);
 
 
@@ -108,6 +128,8 @@ ReactESP app([] () {
 
 
   pButton->connectTo(new Debounce()) -> connectTo(pGauge);
+
+
 
   sensesp_app->enable();
 

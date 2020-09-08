@@ -2,9 +2,7 @@
 #include "DFR0529.h"
 #include "GaugeIcons.h"
 #include "images.h"
-//#include "weixinpic.c"
 #include "sensesp_app.h"
-
 #include <ESP8266WiFi.h>
 #include <math.h>
 #include <cstring>
@@ -14,6 +12,18 @@
 #endif
 
 #define MAX_GAUGE_INPUTS 5
+
+
+DFR0529::GaugeEvent::GaugeEvent() {
+}
+
+//DFR0529::GaugeEvent::GaugeEvent(float Threshold, uint16_t Event_color) :  Threshold{Threshold}, Event_color{Event_color}{
+//}
+
+
+DFR0529::GaugeEvent::GaugeEvent(float Threshold, alarm_type Alarm_type, uint16_t Event_color, notification_type Notification_type,notification_action Notification_action) : Threshold{Threshold}, Alarm_type{Alarm_type}, Event_color{Event_color},Notification_type{Notification_type} ,Notification_action{Notification_action} {
+
+}
 
 
 DFR0529::ValueColor::ValueColor() {
@@ -63,6 +73,11 @@ DFR0529::DFR0529(DFRobot_Display* pDisplay,
 void DFR0529::addValueRange(const ValueColor& newRange) {
    ValueColor* pRange = new ValueColor(newRange);
    valueColors.insert(*pRange);
+}
+
+void DFR0529::addGaugeEvent(const GaugeEvent& newEvent) {
+   GaugeEvent* pGaugeEvent = new GaugeEvent(newEvent);
+   //gaugeEvents.insert(*pGaugeEvent);
 }
 
 
@@ -158,19 +173,175 @@ void DFR0529::drawNeedle(double value, uint16_t color) {
 
 
 void DFR0529::drawDisplay() {
-
-  
-  display.fillScreen(DISPLAY_BLACK);
-
-  //display.drawBmp((uint8_t*)gImage_fuel_56_56, -50, -50, 56, 56);
    
+   double ax,ay,bx,by,cx,cy;
+   double currentangle = gauge_start;
+   double gauge_w = display.getWidth();
+   double gauge_end = gauge_start - (360 - gauge_range);
+ 
    display.fillScreen(DISPLAY_BLACK);
 
    //TODO: Remove these lines
+   //display.drawBmp((uint8_t*)gImage_fuel_56_56, -50, -50, 56, 56);
    //display.drawBmp((uint8_t*)gImage_preheat_28, -60, -30, 28, 28,1,DISPLAY_ORANGE);
    //display.drawBmp((uint8_t*)gImage_battery_28, -30, -30, 28, 28,1,DISPLAY_ORANGE);
    //display.drawBmp((uint8_t*)gImage_oil_28, 0, -30, 28, 28,1,DISPLAY_RED);
    //display.drawBmp((uint8_t*)gImage_fuel_28, 30, -30, 28, 28,1,DISPLAY_ORANGE);
+   total_div = LL_div + L_div + IR_div + H_div + HH_div;
+   div_angle = (gauge_range  / total_div); 
+   gauge_angle = (gauge_range - (total_div-2 * gauge_div))/total_div;
+
+   display.fillCircle(0,0,gauge_w/2,inRange_color);
+   display.setTextBackground(inRange_color);
+   
+   display.setCursor(64,10);
+   //display.print(total_div);
+   display.setCursor(64,20);
+   //display.print(div_angle);
+   display.setCursor(64,30);
+   //display.print(gauge_angle);
+   display.setCursor(64,40);
+   //display.print(currentangle);
+   display.setCursor(64,50);
+   //display.print(gauge_end);
+   display.setCursor(64,60);
+   //display.print(gauge_w);
+
+
+   //calulate side b
+   ax = 0;
+   ay = 0;
+   //calculate coordinates
+   // b coordinates
+   bx = gauge_w * cos(radians(gauge_start));
+   by = gauge_w * sin(radians(gauge_start));
+   //c coordinates
+      //div_angle = 2.0;
+   cx = gauge_w * cos(radians(gauge_end));
+   cy = gauge_w * sin(radians(gauge_end));
+   
+
+   
+   if(LL_div > 0){
+      // Calculate the LL
+      bx = gauge_w * cos(radians(gauge_start));
+      by = gauge_w * sin(radians(gauge_start));
+      // recalculate c point
+      currentangle = currentangle + (LL_div * gauge_angle);
+      cx = gauge_w  * cos(radians(currentangle));
+      cy = gauge_w  * sin(radians(currentangle));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,LL_color);
+   }
+
+   if(L_div > 0){
+      // Calculate the L
+      bx = cx;
+      by = cy;
+      // recalculate c point
+      currentangle = currentangle + (L_div * gauge_angle);
+      cx = gauge_w  * cos(radians(currentangle));
+      cy = gauge_w  * sin(radians(currentangle));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,L_color);
+   }
+
+
+      if(IR_div > 0){
+      // Calculate the InRange point
+      bx = cx;
+      by = cy;
+      // recalculate c point
+      currentangle = currentangle + (IR_div * gauge_angle);
+      cx = gauge_w  * cos(radians(currentangle));
+      cy = gauge_w  * sin(radians(currentangle));
+      }
+
+   if(H_div > 0){
+      // Calculate the H
+      bx = cx;
+      by = cy;
+      // recalculate c point
+      currentangle = currentangle + (H_div * gauge_angle);
+      cx = gauge_w  * cos(radians(currentangle));
+      cy = gauge_w  * sin(radians(currentangle));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,H_color);
+   }
+
+   if(HH_div > 0){
+      // Calculate the HH
+      bx = cx;
+      by = cy;
+      // recalculate c point
+      currentangle = currentangle + (HH_div * gauge_angle);
+      cx = gauge_w  * cos(radians(currentangle));
+      cy = gauge_w  * sin(radians(currentangle));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,HH_color);
+   }
+
+   gauge_blindspot = 360 - gauge_range;
+   
+   if(gauge_blindspot >= 180){
+
+      //calulate side b
+      ax = 0;
+      ay = 0;
+      //calculate coordinates
+      // b coordinates
+      bx = gauge_w * cos(radians(90));
+      by = gauge_w * sin(radians(90));
+      //c coordinates
+         //div_angle = 2.0;
+      //cx = gauge_w * cos(radians(gauge_end));
+      //cy = gauge_w * sin(radians(gauge_end));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,DISPLAY_BLACK);
+
+      cx = bx;
+      cy = by;
+
+      gauge_blindspot = gauge_blindspot - (90 - currentangle);
+
+   }
+
+   if(gauge_blindspot >= 90){
+
+      //calulate side b
+      ax = 0;
+      ay = 0;
+      //calculate coordinates
+      // b coordinates
+      bx = gauge_w * cos(radians(gauge_start));
+      by = gauge_w * sin(radians(gauge_start));
+      //c coordinates
+      //div_angle = 2.0;
+      //cx = gauge_w * cos(radians(gauge_end));
+      //cy = gauge_w * sin(radians(gauge_end));
+      display.fillTriangle(ax,ay,bx,by,cx,cy,DISPLAY_BLACK);
+
+   }
+
+
+
+
+
+   //draw gauge lines starting from gauge_start
+   display.setLineWidth(2);
+   currentangle = gauge_start;
+   bx = gauge_w * cos(radians(currentangle));
+   by = gauge_w * sin(radians(currentangle));
+
+   display.drawLine(ax, ay ,bx,by ,div_color);
+
+   //display.drawLine(cx*7/8,cy*7/8,cx,cy,div_color);
+
+   for(int x= 0; x < total_div; x++){
+      currentangle = currentangle + gauge_angle;
+      bx = gauge_w * cos(radians(currentangle));
+      by = gauge_w * sin(radians(currentangle));
+      display.drawLine(ax, ay ,bx ,by ,div_color);
+   }
+   // add a gauge plate
+   display.fillCircle(0,0,50,DISPLAY_BLACK);
+
+
 
 
 
@@ -178,11 +349,11 @@ void DFR0529::drawDisplay() {
   valueRange = maxVal - minVal;
 
   // Draw gauge ranges
-  drawGaugeTick(0.01, 45, 57, DISPLAY_WHITE);
-  drawGaugeTick(0.25, 50, 57, DISPLAY_WHITE);
-  drawGaugeTick(0.5, 45, 57, DISPLAY_WHITE);
-  drawGaugeTick(0.75, 50, 57, DISPLAY_WHITE);
-  drawGaugeTick(1.0, 45, 57, DISPLAY_WHITE);
+  //drawGaugeTick(0.01, 45, 57, DISPLAY_WHITE);
+  //drawGaugeTick(0.25, 50, 57, DISPLAY_WHITE);
+  //drawGaugeTick(0.5, 45, 57, DISPLAY_WHITE);
+  //drawGaugeTick(0.75, 50, 57, DISPLAY_WHITE);
+  //drawGaugeTick(1.0, 45, 57, DISPLAY_WHITE);
 
 
   // Draw color ranges (if any)...
@@ -191,12 +362,24 @@ void DFR0529::drawDisplay() {
      auto& range = *it;
      double minPct = (range.minVal - minVal) / valueRange;
      double maxPct = (range.maxVal - minVal) / valueRange;
-     drawGaugeRange(minPct, maxPct, 0.002, range.color);
+     //drawGaugeRange(minPct, maxPct, 0.002, range.color);
      it++;
   } // while
 
-
   display.fillCircle(0, 0, 3, DISPLAY_WHITE);
+  display.setLineWidth(1);
+  //draw alignment crosshair
+  //display.drawLine(0,-64,0,64,DISPLAY_WHITE);
+  //display.drawLine(-64,0,64,0,DISPLAY_WHITE);
+
+   //display.drawBmp((uint8_t*)gImage_fuel_56_56, -50, -50, 56, 56);
+   //display.drawBmp((uint8_t*)gImage_preheat_28, -42, -28, 28, 28,1,DISPLAY_ORANGE);
+   //display.drawBmp((uint8_t*)gImage_battery_28, -13, -28, 28, 28,1,DISPLAY_ORANGE);
+   //display.drawBmp((uint8_t*)gImage_oil_28, 17, -28, 28, 28,1,DISPLAY_RED);
+   //display.drawBmp((uint8_t*)gImage_fuel_28, 30, -30, 28, 28,1,DISPLAY_ORANGE);
+
+
+  
 
 }
 
@@ -231,7 +414,7 @@ void DFR0529::updateWifiStatus() {
    switch (newIcon) {
       case 0:
          if (displayIcon != 0) {
-            display.drawBmp((uint8_t*)image_data_iconwifi, -12, 35, 23, 20); 
+            //display.drawBmp((uint8_t*)image_data_iconwifi, -12, 35, 23, 20); 
             displayIcon = 0;
          }
          break;
@@ -239,14 +422,15 @@ void DFR0529::updateWifiStatus() {
       case 1:
       case 3:
          if (displayIcon != 1 && displayIcon != 3) {
-            display.fillRect(-14, 35, 28, 26, DISPLAY_BLACK);
+            //display.fillRect(-14, 35, 28, 26, DISPLAY_BLACK);
             displayIcon = newIcon;
          }
          break;
 
       case 2:
          if (displayIcon != 2) {
-            display.drawBmp(pGaugeIcon, -14, 35, 28, 26);   
+            //temporary disabeld
+            //display.drawBmp(pGaugeIcon, -14, 35, 28, 26);   
             displayIcon = 2;
          }
          break;
@@ -256,6 +440,9 @@ void DFR0529::updateWifiStatus() {
    blinkCount = (blinkCount + 1) % blinkRate;
 }
 
+void DFR0529::set_simulation(bool SimulationOn){
+   SimulationActivated = SimulationOn;
+}
 
 void DFR0529::updateGauge() {
 
@@ -316,10 +503,23 @@ void DFR0529::updateGauge() {
          else {
             strcpy(fmtStr, "%5.0f%c ");
          }
-         display.printf(fmtStr, newDisplayValue, valueSuffix[currentDisplayChannel]);
+         //temporary disabeld
+         //display.printf(fmtStr, newDisplayValue, valueSuffix[currentDisplayChannel]);
 
       }
-   }
+   }     // add dummy text for alignment
+   display.setTextColor(inRange_color);
+   display.setCursor(42,80);
+   display.setTextSize(2);
+   display.print("9999");
+   // add the engineering units
+   display.setCursor(49,100);
+   display.setTextSize(1);
+   display.print(" " + eng_units);
+   // add placeholder hour counter
+   display.setCursor(40,114);
+   display.setTextSize(1);
+   display.print("00:00:00");
 
 }
 
@@ -327,8 +527,44 @@ void DFR0529::updateGauge() {
 void DFR0529::enable() {
     load_configuration();
     drawDisplay();
-    app.onRepeat(500, [this]() { this->updateWifiStatus(); });
-    app.onRepeat(750, [this]() { this->updateGauge(); });
+    //app.onRepeat(500, [this]() { this->updateWifiStatus(); });
+   if(!SimulationActivated){
+      app.onRepeat(750, [this]() { this->updateGauge(); });
+   } else {
+      app.onRepeat(50, [this]() { 
+         Simulation_x ++;
+         //== generatingh the next sine value ==//
+         SimulationSinVal = (sin(radians(Simulation_x)));
+         if (Simulation_x == 180){
+            Simulation_x = 0;}
+         display.setTextBackground(DISPLAY_BLACK);
+         display.setCursor(15,84);
+         display.print("Sin Value: ");
+         //display.println(SimulationSinVal);
+         display.print(SimulationSinVal,4);
+         //display.printf("%s", WiFi.localIP().toString().c_str());
+         this->SimulationActive(); 
+         });
+   }
+}
+
+void DFR0529::SimulationActive(){
+   // do a bit the same as the original code
+   display.setCursor(15,74);
+   display.print("Simulation Active");
+   display.setCursor(7,94);
+   display.print("-: ");
+   display.print(minVal);
+   display.print(" +: ");
+   display.print(maxVal);
+   display.setCursor(15,104);
+   display.print("Current : ");
+   display.print(minVal+(SimulationSinVal * (maxVal - minVal)));
+   input[0] = minVal+(SimulationSinVal * (maxVal - minVal));
+   updateGauge();
+   
+
+
 }
 
 
